@@ -120,7 +120,6 @@ public class PumpkinHeadAI : MonoBehaviour
                 currentWaypoint = wayPoints[Mathf.RoundToInt(UnityEngine.Random.Range(0, wayPoints.Length - 1))].position;
                 agent.SetDestination(currentWaypoint);
             }
-            Debug.Log("lauda");
             if (agent.velocity.magnitude>0)
             {
                 isWalking = true;
