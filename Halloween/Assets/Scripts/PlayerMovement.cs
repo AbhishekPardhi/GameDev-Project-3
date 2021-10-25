@@ -8,6 +8,7 @@ public class PlayerMovement : MonoBehaviour
     Camera cam;
     Vector3 moveDirection;
     CharacterController playerController;
+    CameraBobble bobbleScript;
     public float currentSpeed;
     [SerializeField] private float _gravity = 2f;
     public float moveSpeed;
@@ -20,6 +21,7 @@ public class PlayerMovement : MonoBehaviour
     {
         playerController = GetComponent<CharacterController>();
         cam = Camera.main;
+        bobbleScript = cam.GetComponent<CameraBobble>();
         Cursor.lockState = CursorLockMode.Locked;
     }
 
@@ -41,6 +43,10 @@ public class PlayerMovement : MonoBehaviour
         float z = Input.GetAxis("Vertical");
         Vector3 move = transform.right * x + transform.forward * z;
         move = move.normalized;
+        if(move.magnitude > 0)
+            bobbleScript.bobble();
+        else
+            bobbleScript.returnToEyeHeight();
         playerController.Move(move * moveSpeed * Time.deltaTime);
         velocity.y += newGravity * Time.deltaTime;
         playerController.Move(velocity * Time.deltaTime);
