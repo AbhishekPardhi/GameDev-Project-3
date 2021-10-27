@@ -27,6 +27,7 @@ public class PumpkinHeadAI : MonoBehaviour
     public bool isAttacking;
     public bool inAttackRange;
     public bool isPuttingTrap;
+    public bool isStandingTaunt;
     public bool lastKnownSet;
     public bool isPatrollingCoroutineRunning;
     [Space(2)]
@@ -51,11 +52,12 @@ public class PumpkinHeadAI : MonoBehaviour
 
     void Start()
     {
-        //transform.position = wayPoints[0].position;
         isPatrollingCoroutineRunning = false;
         lastKnownSet = false;
         line = GetComponent<LineRenderer>();
         isPuttingTrap = false;
+        isWalking = false;
+        isRunning = false;
     }
 
     void FixedUpdate()
@@ -63,17 +65,19 @@ public class PumpkinHeadAI : MonoBehaviour
         CheckConditions();
         UpdateBooleans();
         if (!isAware) Patrolling();
-        else
+        else if (currentMoveCoroutine != null)
         {
-            if(currentMoveCoroutine!=null) StopCoroutine(currentMoveCoroutine);
+            StopCoroutine(currentMoveCoroutine);
             isPatrollingCoroutineRunning = false;
         }
-        if (!inAttackRange && lastKnownSet) Chasing();
+        if (!inAttackRange && (lastKnownSet || isAware)) Chasing();
         if (isAware && inAttackRange) Attacking();
         else isAttacking = false;
-        //if(agent.hasPath) DisplayLineDestination(); 
-        line.positionCount = agent.path.corners.Length;
-        line.SetPositions(agent.path.corners);
+        if (agent.hasPath)
+        {
+            line.positionCount = agent.path.corners.Length;
+            line.SetPositions(agent.path.corners);
+        }
     }
 
     private void UpdateBooleans()
@@ -89,21 +93,22 @@ public class PumpkinHeadAI : MonoBehaviour
         isRunning = false;
         isWalking = false;
         isAttacking = true;
-        Debug.Log("Attacked");
+        //Debug.Log("Attacked");
     }
 
     private void Chasing()
     {
         isRunning = true;
         agent.SetDestination(lastKnown);
-        transform.LookAt(player.transform.position);
-        Debug.Log("Chasing");
+        if (isAware) transform.LookAt(player.transform.position);
+        //Debug.Log("Chasing");
     }
     private void Patrolling()
     {
+        isRunning = false;
         if (!isPatrollingCoroutineRunning)
         {
-            currentMoveCoroutine= IdleOrWalking();
+            currentMoveCoroutine = IdleOrWalking();
             StartCoroutine(currentMoveCoroutine);
         }
         //Debug.Log("Patrolling");
@@ -113,24 +118,32 @@ public class PumpkinHeadAI : MonoBehaviour
         isPatrollingCoroutineRunning = true;
         while (true)
         {
-            if (agent.velocity.magnitude==0)
+            if (agent.velocity.magnitude == 0)
             {
                 isWalking = false;
                 yield return new WaitForSeconds(idleTime);
                 currentWaypoint = wayPoints[Mathf.RoundToInt(UnityEngine.Random.Range(0, wayPoints.Length - 1))].position;
                 agent.SetDestination(currentWaypoint);
+                //Debug.Log("just now set destination with " + agent.velocity.magnitude);
+                yield return new WaitForSeconds(0.1f);
             }
-            if (agent.velocity.magnitude>0)
+            if (agent.velocity.magnitude > 0)
             {
-                isWalking = true;
+                if (!isWalking)
+                {
+                    isWalking = true;
+                    //Debug.Log("iswalking, velocity=" + agent.velocity.magnitude);
+                }
                 yield return null;
             }
             if (isPuttingTrap)
             {
-                Vector3 pos = transform.position + transform.forward - transform.up * 0.9f;
-                GameObject clone = Instantiate(trap, pos, transform.rotation); 
+                isStandingTaunt = true;
                 yield return new WaitForSeconds(trapTime);
+                Vector3 pos = transform.position + transform.forward - transform.up * 0.9f;
+                GameObject clone = (GameObject)Instantiate(trap, pos, transform.rotation);
                 isPuttingTrap = false;
+                isStandingTaunt = false;
             }
         }
     }
@@ -140,7 +153,7 @@ public class PumpkinHeadAI : MonoBehaviour
         int layerMask = 1 << 8;
         layerMask = ~layerMask;
         RaycastHit hit;
-        if (Physics.Raycast(eyeLevel.position, headLevel.position - eyeLevel.position, out hit, Mathf.Infinity,layerMask))
+        if (Physics.Raycast(eyeLevel.position, headLevel.position - eyeLevel.position, out hit, Mathf.Infinity, layerMask))
         {
             if (hit.transform.tag == "Player")
             {
@@ -154,7 +167,7 @@ public class PumpkinHeadAI : MonoBehaviour
             }
         }
         Vector3 vec = new Vector3(player.transform.position.x, transform.position.y, player.transform.position.z);
-        if (Vector3.Angle(transform.forward, vec-transform.position) < FOV / 2) inSight = true; else inSight = false;
+        if (Vector3.Angle(transform.forward, vec - transform.position) < FOV / 2) inSight = true; else inSight = false;
         if (inSight == true && isVisible == true) isAware = true; else isAware = false;
         if (Vector3.Distance(player.transform.position, transform.position) < attackRange) inAttackRange = true; else inAttackRange = false;
         if (isAware)
@@ -163,23 +176,16 @@ public class PumpkinHeadAI : MonoBehaviour
             lastKnownSet = true;
             Debug.DrawRay(eyeLevel.position, headLevel.position - eyeLevel.position, Color.red);
         }
-        if (agent.velocity.magnitude == 0 && agent.remainingDistance<agent.stoppingDistance+0.1f) lastKnownSet = false;
+        if (agent.velocity.magnitude == 0 && agent.remainingDistance < agent.stoppingDistance + 0.1f)
+        {
+            lastKnownSet = false;
+            if(Vector3.Distance(transform.position,lastKnown)<agent.stoppingDistance+0.1f)
+            {
+                isPuttingTrap = true;
+            }
+        }
         if (!isRunning) agent.speed = walkingSpeed;
         else agent.speed = runningSpeed;
         moveSpeed = agent.velocity.magnitude;
-    }
-    private void DisplayLineDestination() //Delete this function when not in use
-    {
-        if (agent.path.corners.Length < 2) return;
-        for(int i=1;i<agent.path.corners.Length;i++)
-        {
-            int length = agent.path.corners.Length;
-            line.positionCount = length;
-            point = agent.path.corners.ToList();
-            for (int j = 0; j < point.Count; j++)
-            {
-                line.SetPosition(j, point[j]);
-            }
-        }
     }
 }

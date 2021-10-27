@@ -5,42 +5,46 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
+    public float smooth;
     Camera cam;
-    Vector3 moveDirection;
-    CharacterController playerController;
+    public CharacterController playerController;
     CameraBobble bobbleScript;
-    public float currentSpeed;
-    [SerializeField] private float _gravity = 2f;
+
+    Vector3 moveDirection;
+    private Vector3 velocity;
+    public float h;
     public float moveSpeed;
     public float aimSensi;
     public float xRotaionClamp;
     public float newGravity=-9.81f;
     private float xRotation;
-    private Vector3 velocity;
+    
+    public bool isCrouched;
     void Start()
     {
-        playerController = GetComponent<CharacterController>();
         cam = Camera.main;
         bobbleScript = cam.GetComponent<CameraBobble>();
         Cursor.lockState = CursorLockMode.Locked;
+        h = playerController.height;
     }
 
-    // Update is called once per frame
     void FixedUpdate()
     {
-        //OldMovement();
         NewMovement();
     }
     private void Update()
     {
         Rotation();
+        Crouch();
     }
 
     private void NewMovement()
     {
         if (playerController.isGrounded && velocity.y < 0) velocity.y = -2f;
         float x = Input.GetAxis("Horizontal");
+        if (Mathf.Abs(x) < 0.1f) x = 0;
         float z = Input.GetAxis("Vertical");
+        if (Mathf.Abs(z) < 0.1f) z = 0;
         Vector3 move = transform.right * x + transform.forward * z;
         move = move.normalized;
         if(move.magnitude > 0)
@@ -62,17 +66,29 @@ public class PlayerMovement : MonoBehaviour
         transform.Rotate(Vector3.up * mouseX);
     }
 
-    private void OldMovement()
+    private void Crouch()
     {
-        float moveX = Input.GetAxis("Horizontal");
-        float moveY = Input.GetAxis("Vertical");
-        Vector3 inputDirection = new Vector3(moveX, 0, moveY);
-        Vector3 transfromDirection = transform.TransformDirection(inputDirection) * moveSpeed;
-        Vector3 flatMovement = moveSpeed * Time.deltaTime * transfromDirection;
-        moveDirection = new Vector3(flatMovement.x, moveDirection.y, flatMovement.z);
-        if (playerController.isGrounded) moveDirection.y = 0f;
-        else moveDirection.y -= _gravity * Time.deltaTime;
-        playerController.Move(moveDirection);
-        currentSpeed = playerController.velocity.magnitude;
+        if (Input.GetKeyDown(KeyCode.C))
+        {
+            if (!isCrouched)
+            {
+                h = 1f;
+                isCrouched = true;
+                //print("crouched");
+            }
+            else
+            {
+                h = 2f;
+                isCrouched = false;
+            }
+        }
+        float lastHeight = playerController.height;
+        playerController.height = Mathf.Lerp(playerController.height, h, smooth * Time.deltaTime);
+        //playerController.center += new Vector3(0, (playerController.height - lastHeight) / 2, 0);
+        //transform.position += new Vector3(0, (playerController.height - lastHeight) / 2, 0);
+        Vector3 standingHeight = new Vector3(transform.position.x, 2f, transform.position.z);
+        Vector3 crouchedHeight = new Vector3(transform.position.x, 1.5f, transform.position.z);
+        if (!isCrouched) transform.position = Vector3.Lerp(transform.position, standingHeight, Time.deltaTime *smooth);
+        else transform.position = Vector3.Lerp(transform.position, crouchedHeight, Time.deltaTime * smooth);
     }
 }
