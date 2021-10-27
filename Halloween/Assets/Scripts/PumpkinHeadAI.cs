@@ -99,6 +99,7 @@ public class PumpkinHeadAI : MonoBehaviour
     private void Chasing()
     {
         isRunning = true;
+        isWalking = true;
         agent.SetDestination(lastKnown);
         if (isAware) transform.LookAt(player.transform.position);
         //Debug.Log("Chasing");
@@ -121,7 +122,17 @@ public class PumpkinHeadAI : MonoBehaviour
             if (agent.velocity.magnitude == 0)
             {
                 isWalking = false;
-                yield return new WaitForSeconds(idleTime);
+                if (isPuttingTrap)
+                {
+                    isStandingTaunt = true;
+                    Debug.Log("isstandingtaunt");
+                    yield return new WaitForSeconds(trapTime);
+                    Vector3 pos = transform.position + transform.forward - transform.up * 0.4f;
+                    GameObject clone = (GameObject)Instantiate(trap, pos, transform.rotation);
+                    isPuttingTrap = false;
+                    isStandingTaunt = false;
+                }
+                else yield return new WaitForSeconds(idleTime);
                 currentWaypoint = wayPoints[Mathf.RoundToInt(UnityEngine.Random.Range(0, wayPoints.Length - 1))].position;
                 agent.SetDestination(currentWaypoint);
                 //Debug.Log("just now set destination with " + agent.velocity.magnitude);
@@ -135,15 +146,6 @@ public class PumpkinHeadAI : MonoBehaviour
                     //Debug.Log("iswalking, velocity=" + agent.velocity.magnitude);
                 }
                 yield return null;
-            }
-            if (isPuttingTrap)
-            {
-                isStandingTaunt = true;
-                yield return new WaitForSeconds(trapTime);
-                Vector3 pos = transform.position + transform.forward - transform.up * 0.9f;
-                GameObject clone = (GameObject)Instantiate(trap, pos, transform.rotation);
-                isPuttingTrap = false;
-                isStandingTaunt = false;
             }
         }
     }
