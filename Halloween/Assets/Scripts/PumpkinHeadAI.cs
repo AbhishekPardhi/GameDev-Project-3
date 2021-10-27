@@ -29,6 +29,7 @@ public class PumpkinHeadAI : MonoBehaviour
     public bool isPuttingTrap;
     public bool isStandingTaunt;
     public bool lastKnownSet;
+    public bool noise;
     public bool isPatrollingCoroutineRunning;
     [Space(2)]
 
@@ -58,26 +59,38 @@ public class PumpkinHeadAI : MonoBehaviour
         isPuttingTrap = false;
         isWalking = false;
         isRunning = false;
+        noise = false;
     }
 
     void FixedUpdate()
     {
         CheckConditions();
         UpdateBooleans();
-        if (!isAware) Patrolling();
-        else if (currentMoveCoroutine != null)
+        if(!noise)
         {
-            StopCoroutine(currentMoveCoroutine);
-            isPatrollingCoroutineRunning = false;
+            if (!isAware) Patrolling();
+            else if (currentMoveCoroutine != null)
+            {
+                StopCoroutine(currentMoveCoroutine);
+                isPatrollingCoroutineRunning = false;
+            }
+            if (!inAttackRange && (lastKnownSet || isAware)) Chasing();
+            if (isAware && inAttackRange) Attacking();
+            else isAttacking = false;
         }
-        if (!inAttackRange && (lastKnownSet || isAware)) Chasing();
-        if (isAware && inAttackRange) Attacking();
-        else isAttacking = false;
         if (agent.hasPath)
         {
             line.positionCount = agent.path.corners.Length;
             line.SetPositions(agent.path.corners);
         }
+    }
+
+    public void Noise(Vector3 pos)
+    {
+        isRunning = true;
+        isWalking = true;
+        lastKnownSet = true;
+        agent.SetDestination(pos);
     }
 
     private void UpdateBooleans()
@@ -181,6 +194,13 @@ public class PumpkinHeadAI : MonoBehaviour
         if (agent.velocity.magnitude == 0 && agent.remainingDistance < agent.stoppingDistance + 0.1f)
         {
             lastKnownSet = false;
+            if(noise && !isAware)
+            {
+                Vector3 pos = transform.position + transform.forward + transform.up * 0.4f;
+                //Debug.Log(pos);
+                GameObject clone = (GameObject)Instantiate(trap, pos, transform.rotation);
+            }
+            noise = false;
             if(Vector3.Distance(transform.position,lastKnown)<agent.stoppingDistance+0.1f)
             {
                 isPuttingTrap = true;
