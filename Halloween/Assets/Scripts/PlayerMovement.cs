@@ -20,22 +20,29 @@ public class PlayerMovement : MonoBehaviour
     private float xRotation;
     
     public bool isCrouched;
+    public bool cantMove;
     void Start()
     {
         cam = Camera.main;
         bobbleScript = cam.GetComponent<CameraBobble>();
         Cursor.lockState = CursorLockMode.Locked;
+        
         h = playerController.height;
+        cantMove = false;
     }
 
     void FixedUpdate()
     {
-        NewMovement();
+        if (!cantMove) NewMovement();
     }
     private void Update()
     {
-        Rotation();
-        Crouch();
+        if (!cantMove)
+        {
+            Rotation();
+            //Crouch();
+        }
+        //Cursor.visible = true;
     }
 
     private void NewMovement()
@@ -48,9 +55,9 @@ public class PlayerMovement : MonoBehaviour
         Vector3 move = transform.right * x + transform.forward * z;
         move = move.normalized;
         if(move.magnitude > 0)
-            bobbleScript.bobble();
+/*            bobbleScript.bobble();
         else
-            bobbleScript.returnToEyeHeight();
+            bobbleScript.returnToEyeHeight();*/
         playerController.Move(move * moveSpeed * Time.deltaTime);
         velocity.y += newGravity * Time.deltaTime;
         playerController.Move(velocity * Time.deltaTime);

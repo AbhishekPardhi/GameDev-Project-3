@@ -20,9 +20,9 @@ public class Noise : MonoBehaviour
     }
     private void OnCollisionEnter(Collision collision)
     {
-        if (rig.velocity.magnitude > 0.001f)
+        if (rig.velocity.magnitude > 0.0001f)
         {
-            if(!sound.isPlaying) sound.Play();
+             sound.Play();
             pumpkin.noise = true;
             pumpkin.Noise(transform.position);
         }
